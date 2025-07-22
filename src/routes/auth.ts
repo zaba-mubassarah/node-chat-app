@@ -18,12 +18,28 @@ router.post('/register', async (req, res) => {
 
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
+
+  // 1. Find user by email
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user || !(await bcrypt.compare(password, user.password))) {
-    return res.status(401).json({ error: 'Invalid credentials' });
-  }
+
+  if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+
+  // 2. Compare hashed passwords
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' });
+
+  // 3. Create JWT token
   const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
-  res.json({ token });
+
+  // 4. Return token and user info
+  return res.json({
+    token,
+    user: {
+      id: user.id,
+      email: user.email
+    }
+  });
 });
 
 export default router;
+
